@@ -15,34 +15,35 @@ def main(argv):
         sockfd.listen(5)
         print("The server is ready to receive")
     except socket.error as  emsg:
-        print("Socket bind error", emsg)
+        print("Socket bind error:", emsg)
         sys.exit(1)
     
 
-     # accept new connection
+    # accept new connection
     while True:       
         try:
             conn, addr = sockfd.accept() # addr is the address of the client
-        except socket.error as errormsg:
-            print("socket accept error", errormsg)
+        except socket.error as acptmsg:
+            print("socket accept error", acptmsg)
             sys.exit(1)
+        print("Connection established. Here is the remote peer info:", conn.getsockname())
         
         # receive file name/size message from client 
         try:
             fileinfo= conn.recv(1024).decode('ascii')
-        except socket.error as acptmsg:
-            print("file information receive error", acptmsg)
+        except socket.error as recverror:
+            print("file infor receive error", recverror)
             sys.exit(1)
 
         #use Python string split function to retrieve file name and file size from the received message
-        fname, filesize = fileinfo.split(";")
+        fname, filesize = fileinfo.split(":")
         print("Open a file with name \'%s\' with size %s bytes" % (fname, filesize))
         
         #create a new file with fname
         try:
             fd = open(fname, "wb") # write binary
         except os.error as flerror:
-            print("File error", flerror)
+            print("File open error", flerror)
             sys.exit(1)
        
        # send OK to the client that the server is ok for receiving files
@@ -54,14 +55,14 @@ def main(argv):
             # receive the file content into rmsg and write into the file
             try:
                 rmsg = conn.recv(1000)
-            except socket.error as acptmsg:
-                print("File content receive error")
+            except socket.error as recvmsg:
+                print("File content receive error:", recvmsg)
                 sys.exit(1)
             try:
                 fd.write(rmsg)
                 remaining -= len(rmsg)
             except os.error as wrterror:
-                print("file write error", wrterror)
+                print("file write error:", wrterror)
             
         print("[Completed]")
         fd.close()
