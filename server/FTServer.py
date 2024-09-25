@@ -26,7 +26,7 @@ def main(argv):
         except socket.error as acptmsg:
             print("socket accept error", acptmsg)
             sys.exit(1)
-        print("Connection established. Here is the remote peer info:", conn.getsockname())
+        print("Connection established. Here is the remote peer info:", addr)
         
         # receive file name/size message from client 
         try:
