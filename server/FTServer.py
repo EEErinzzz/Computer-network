@@ -40,7 +40,7 @@ def main(argv):
         
         #create a new file with fname
         try:
-            fd = open("fname", "wb") # write binary
+            fd = open(fname, "wb") # write binary
         except os.error as flerror:
             print("File error", flerror)
             sys.exit(1)
