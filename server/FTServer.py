@@ -1,71 +1,71 @@
 #!/usr/bin/python3
-
+import os.path
 import socket
 import sys
 
 def main(argv):
     # get port number from argv
-    
-   
+    serverport = int(argv[1])
+
     # create socket and bind
+    try:
+        sockfd = socket.socket()
+            #When you call socket.socket() without any arguments, by default, it creates TCP socket
+        sockfd.bind(('',serverport ))
+        sockfd.listen(5)
+        print("The server is ready to receive")
+    except socket.error as  emsg:
+        print("Socket bind error", emsg)
+        sys.exit(1)
     
-    
-    
-    
-    
-    
-    
-    sockfd.listen(5)
-    
-    print("The server is ready to receive")
-    
-    while True:
-        
-        # accept new connection
-        
-        
-        
-        
-        
+
+     # accept new connection
+    while True:       
+        try:
+            conn, addr = sockfd.accept() # addr is the address of the client
+        except socket.error as errormsg:
+            print("socket accept error", errormsg)
+            sys.exit(1)
         
         # receive file name/size message from client 
-        
-        
-        
-        
-        
-            
-        
-        
+        try:
+            fileinfo= conn.recv(1024).decode('ascii')
+        except socket.error as acptmsg:
+            print("file information receive error", acptmsg)
+            sys.exit(1)
+
         #use Python string split function to retrieve file name and file size from the received message
-        fname, filesize = 
-        
+        fname, filesize = fileinfo.split(";")
         print("Open a file with name \'%s\' with size %s bytes" % (fname, filesize))
         
         #create a new file with fname
+        try:
+            fd = open("fname", "wb") # write binary
+        except os.error as flerror:
+            print("File error", flerror)
+            sys.exit(1)
        
-       
-       
-       
-       
-        
+       # send OK to the client that the server is ok for receiving files
         remaining = int(filesize)
-
         conn.send(b"OK")
-
         print("Start receiving . . .")
+
         while remaining > 0:
             # receive the file content into rmsg and write into the file
+            try:
+                rmsg = conn.recv(1000)
+            except socket.error as acptmsg:
+                print("File content receive error")
+                sys.exit(1)
+            try:
+                fd.write(rmsg)
+                remaining -= len(rmsg)
+            except os.error as wrterror:
+                print("file write error", wrterror)
             
-            
-            
-            
-            remaining -= len(rmsg)
-
         print("[Completed]")
         fd.close()
         conn.close()
-        
     sockfd.close()
     
 
