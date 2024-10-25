@@ -9,6 +9,8 @@ rooms = {1: [], 2: [], 3: []}  # Example: 1:{10, 11} thread 10 and thread 11 are
 AUTHENTICATING = 0
 IN_GAME_HALL = 1
 MAX_PLAYERS_PER_ROOM = 2
+IN_GAME = 3
+EXIT = 4
 
 def load_user_info(USER_INFO_PATH):
     # return a dictionary of UserInfo.txt to record the key of corresponding user
@@ -18,6 +20,7 @@ def load_user_info(USER_INFO_PATH):
         for line in file:
             username, password = line.strip().split(':')
             user_info[username] = password
+    print(user_info)
     return user_info 
 
 
@@ -27,30 +30,35 @@ def handle_client(client_socket, user_info):
     state = AUTHENTICATING
     while True:
         if state == AUTHENTICATING:
-            client_socket.send(b"Please input your user name:\n")
+            client_socket.send(b"Please input your user name:")
             username = client_socket.recv(1024).decode()
-            client_socket.send(b"Plese input your password")
-            key  = client_socket.recv(1024).decode
+            print("reveived name:", username)
+            client_socket.send(b"Plese input your password:")
+            key = client_socket.recv(1024).decode()
+            print("reveived key:", key)
             if username in user_info and user_info[username] == key:
-                client_socket.send(b"1001 Authentication successful\n")
+                client_socket.send(b"1001 Authentication successful")
+                print("Sent successful Authentication result ")
                 state = IN_GAME_HALL
             else:
                 client_socket.send(b"1002 Authentication failed")
+                print("Sent failed Authentication result ")
 
         if state == IN_GAME_HALL:
             # Game hall logic
             ...
             #change state to game if possible
+            pass
         if state == IN_GAME:
             #game logic
             # have a varibale room to record the thread key of threading attending this room
             # have a guess varible to record the guess from the thread attending this room
+            pass
         if state == EXIT:
             
             break
 
     client_socket.close()
-
 
 
 
