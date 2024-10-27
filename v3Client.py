@@ -32,12 +32,24 @@ def main(server_ip, server_port):
                 message = client_socket.recv(1024).decode()
                 print(message)
                 username = input()
+                if len(username) < 1:
+                    while True:
+                        print("Username can't be empty")
+                        username = input()
+                        if len(username) > 0:
+                            break
             # Get user name and send it to the server
                 client_socket.send(username.encode())
             #Receive ask for key message
                 message = client_socket.recv(1024).decode()
                 print(message)
                 userkey = input()
+                if len(userkey) < 1:
+                    while True:
+                        print("Password can't be empty")
+                        userkey = input()
+                        if len(userkey) > 0:
+                            break
                 client_socket.send(userkey.encode())
             #Receive authenticating result message
                 message = client_socket.recv(1024).decode()
@@ -48,10 +60,17 @@ def main(server_ip, server_port):
             if state == IN_GAME_HALL:
                 client_socket.settimeout(60)
                 command = input("Enter a command: ")  # Added prompt for clarity
+                if len(command) < 1:
+                    while True:
+                        print("Command can't be empty")
+                        command = input()
+                        if len(command) > 0:
+                            break
                 client_socket.send(command.encode()) 
                 try:
                     response = client_socket.recv(1024).decode()
-                    print(response)
+                    if not response.startswith("5001"):
+                        print(response)
                     
                     #Start with 30XX
                     if response.startswith("30"):
