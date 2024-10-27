@@ -40,6 +40,10 @@ Replace `<Server_port>` with the desired port number and `<path_to_UserInfo.txt>
 ## Disconnection Check
 1. Disconnection occurs when one player in the room disconnects.
  - If a player leaves before or after the other player's guess, the remaining player must guess first and will receive the message: `You are the winner` since the other player has quit.
+ - If a player made a guess, the guess will be uploaded to the server and remains in the server storage utill the game ends. Even though the player leaves before the other player's guess, the remaining player will receive message as normal.
+
+2. Disconnection occurs when one player is waiting for rooms.
+- If a player is in the wait room and its connection to the server ends suddenly, the server will acknowledge this disconnection and update the room status accordingly. 
 
 
 
