@@ -70,7 +70,7 @@ def load_user_info(USER_INFO_PATH):
 def handle_client(client_socket, user_info): 
     #client_socket: sockect connecting to the specific client from the server
     # user_info: ictionary recording name and key of users
-    client_socket.settimeout(10) # Default timeeout is 10 seconds
+    client_socket.settimeout(30) # Default timeeout is 30 seconds
 
 
     state = AUTHENTICATING
@@ -94,6 +94,7 @@ def handle_client(client_socket, user_info):
                 print("Sent failed Authentication result ")
 
         if state == IN_GAME_HALL:
+            client_socket.settimeout(60) # Extend the timeout to 30 seconds after user login
             guess_val = None
             print(state)
             try:
@@ -135,7 +136,7 @@ def handle_client(client_socket, user_info):
                 
 
             if state == IN_GAME:
-                client_socket.settimeout(30) # Extend the timeout to 30 seconds after user login
+                client_socket.settimeout(60) # Extend the timeout to 30 seconds after user login
                 # check whether user in the room is disconnected
                 # After the player receiving the "3012" msg
                 lock.acquire()
@@ -164,6 +165,12 @@ def handle_client(client_socket, user_info):
                             return
                         except ConnectionAbortedError:
                             print(f"Server log: {threading.get_ident()} terminated this connection. Connection ended")
+                            lock.acquire()
+                            rooms[room_number].remove(threading.get_ident())
+                            lock.release()
+                            return
+                        except Exception as e:
+                            print(f"Server log: {threading.get_ident()} terminated this connection. Connection ended", e)
                             lock.acquire()
                             rooms[room_number].remove(threading.get_ident())
                             lock.release()
@@ -199,6 +206,12 @@ def handle_client(client_socket, user_info):
                         return
                     except TimeoutError:
                         print(f"Server log: {threading.get_ident()} haven't respond for a long time. Connection terminated" )
+                        if threading.get_ident() in rooms[room_number]:
+                            rooms[room_number].remove(threading.get_ident())
+                        rooms_connection_status[room_number][player_index] = False
+                        return
+                    except Exception as e:
+                        print(f"Server log: {threading.get_ident()} terminated this connection. Connection ended", e)
                         if threading.get_ident() in rooms[room_number]:
                             rooms[room_number].remove(threading.get_ident())
                         rooms_connection_status[room_number][player_index] = False
@@ -301,7 +314,9 @@ def handle_client(client_socket, user_info):
                 if threading.get_ident() in rooms[room_number]:
                     lock.acquire()
                     rooms[room_number].remove(threading.get_ident())
-                    reset_room(room_number)
+                    if rooms_connection_status[room_number][1-player_index] == False: # Reset the room if the other player left
+                        reset_room(room_number)
+                    rooms_connection_status[room_number][player_index] = False # The player (this client) left
                     lock.release()
                     
 
