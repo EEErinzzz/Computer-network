@@ -23,6 +23,7 @@ def main(server_ip, server_port):
         # Create a socket to connect to the server
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((server_ip, server_port))
+        client_socket.settimeout(15) # Default timeeout is 15 seconds
         print("Connected to the server.")
 
         while True:
@@ -45,6 +46,7 @@ def main(server_ip, server_port):
                     state = IN_GAME_HALL
             
             if state == IN_GAME_HALL:
+                client_socket.settimeout(30)
                 command = input("Enter a command: ")  # Added prompt for clarity
                 client_socket.send(command.encode()) 
                 try:
@@ -66,7 +68,8 @@ def main(server_ip, server_port):
                         
                     elif response.startswith("40"):
                         if response.startswith("4001"):
-                            print(response)
+                            client_socket.close()
+                            sys.exit(1)  
                             return
                         continue  # Handle error messages starting with "40"
                     elif response.startswith("5001"):
