@@ -10,6 +10,7 @@ rooms = {1: [],
         #for each room create a specific lock for it
 rooms_guess_answer = {1: None, 2: None, 3: None}
 rooms_player_guess = {1: [None, None], 2: [None, None], 3: [None, None]}
+rooms_connection_status = {1: [True, True], 2: [True, True], 3: [True, True]}
 lock = threading.Lock()
 
 
@@ -19,6 +20,24 @@ IN_GAME_HALL = 1
 MAX_PLAYERS_PER_ROOM = 2
 IN_GAME = 3
 EXIT = 4
+
+def get_thread_by_id(thread_id):
+    for thread in threading.enumerate():
+        if thread.ident == thread_id:
+            return thread
+    return None
+
+
+def check_thraed_alive(room_number):
+    # Check if the thread is still alive
+    for id in rooms[room_number]:
+        try:
+            if threading.Thread.is_alive(get_thread_by_id(id)) == False:
+                return id
+        except AttributeError:
+            return id
+    return 0
+
 
 def rooms_generate_guess(room_number):
     # Provided that the room_number is correct
@@ -33,6 +52,7 @@ def reset_room(room_number):
     rooms[room_number] = []
     rooms_guess_answer[room_number] = None
     rooms_player_guess[room_number] = [None, None]
+    rooms_connection_status[room_number] = [True, True]
 
 
 def load_user_info(USER_INFO_PATH):
@@ -86,7 +106,7 @@ def handle_client(client_socket, user_info):
                 for i in rooms:
                     response += " "
                     response += str(len(rooms[i]))
-                print(response)
+                print(rooms, rooms_guess_answer, rooms_player_guess, rooms_connection_status)
                 client_socket.send(response.encode())
             elif command.startswith("/enter"): 
                 try:
@@ -148,21 +168,36 @@ def handle_client(client_socket, user_info):
                         if len(rooms[room_number]) == 2:
                             print("Break")
                             break
+
                 ## 3012 Game Started case
+
+                ## Double check if the client is still in the room (online)
+                checking = check_thraed_alive(room_number)
+                if check_thraed_alive(room_number) != 0:
+                    print("Sever log: A client is offline while joining the room, removing the client from the room")
+                    lock.acquire()
+                    rooms[room_number].remove(checking)
+                    lock.release()
+
                 rooms_generate_guess(room_number)
                 client_socket.send(b"3012 Game Started. Please guess true or false")
+                answer_guess = rooms_guess_answer[room_number]
                 while True and state == IN_GAME:
-
+                    
                     # Step 1: Get Guess from client
                     try:
                         client_msg = client_socket.recv(50).decode()
                     except ConnectionAbortedError:
                         print(f"Server log: {threading.get_ident()} terminated this connection. Connection ended")
-                        rooms[room_number].remove(threading.get_ident())
+                        if threading.get_ident() in rooms[room_number]:
+                                    rooms[room_number].remove(threading.get_ident())
+                        rooms_connection_status[room_number][player_index] = False
                         return
                     except TimeoutError:
                         print(f"Server log: {threading.get_ident()} haven't respond for a long time. Connection terminated" )
-                        rooms[room_number].remove(threading.get_ident())
+                        if threading.get_ident() in rooms[room_number]:
+                            rooms[room_number].remove(threading.get_ident())
+                        rooms_connection_status[room_number][player_index] = False
                         return
                     # Step 2: Check if the guess has correct format
                     if client_msg.split(" ")[0] == "/guess":
@@ -186,21 +221,26 @@ def handle_client(client_socket, user_info):
                             if rooms_player_guess[room_number][0] != None and rooms_player_guess[room_number][1] != None:
                                 #Tie
                                 if rooms_player_guess[room_number][0] == rooms_player_guess[room_number][1]:
+                                    print("Send 3023")
                                     client_socket.send(b"3023 The result is a tie")
-                                    reset_room(room_number)
+                                    if len(rooms[room_number]) == 1:
+                                        reset_room(room_number)
                                     state = IN_GAME_HALL
                                     break
                                 #Win
                                 print("Server log: ", client_guess, rooms_guess_answer[room_number])
                                 if client_guess == rooms_guess_answer[room_number]:
                                     client_socket.send(b"3021 You are the winner")
-                                    reset_room(room_number)
+                                    if len(rooms[room_number]) == 1:
+                                        reset_room(room_number)
                                     state = IN_GAME_HALL
                                     break
                                 #Lose
                                 else:
+                                    print("???", client_guess, rooms_guess_answer[room_number])
                                     client_socket.send(b"3022 You lost this game")
-                                    reset_room(room_number)
+                                    if rooms[room_number] == 1:
+                                        reset_room(room_number)
                                     state = IN_GAME_HALL
                                     break
                             #Step 4a: Waiting for the other player
@@ -209,10 +249,11 @@ def handle_client(client_socket, user_info):
                                 client_socket.send(b"5001 SYN")
                             else:
                                 # Step 4b: The other client left, game over now
-                                client_socket.send(b"3021 You are the winner")
-                                reset_room(room_number)
-                                state = IN_GAME_HALL
-                                break
+                                if rooms_connection_status[room_number][1 - player_index] == False:
+                                    client_socket.send(b"3021 You are the winner")
+                                    reset_room(room_number)
+                                    state = IN_GAME_HALL
+                                    break
 
                             try:
                                 # SYN1: Check SYN msg to the client
@@ -229,21 +270,35 @@ def handle_client(client_socket, user_info):
                             except ConnectionAbortedError:
                                 print(f"Server log: {threading.get_ident()} terminated this connection. Connection ended")
                                 lock.acquire()
-                                rooms[room_number].remove(threading.get_ident())
+                                if threading.get_ident() in rooms[room_number]:
+                                    rooms[room_number].remove(threading.get_ident())
                                 if len(rooms[room_number]) == 0:
                                     reset_room(room_number)
                                 lock.release()
                                 return
+                            except Exception as e:
+                                print(f"Server log: {threading.get_ident()} terminated this connection. Connection ended", e)
+                                lock.acquire()
+                                if threading.get_ident() in rooms[room_number]:
+                                    rooms[room_number].remove(threading.get_ident())
+                                if len(rooms[room_number]) == 0:
+                                    reset_room(room_number)
+                                lock.release()
                             ## More exception if needed
 
                             # When the other player left
-                            if len(rooms[room_number]) == 1:
+                            if len(rooms[room_number]) == 1 and rooms_connection_status[room_number][1 - player_index] == False:
                                 client_socket.send(b"3021 You are the winner")
                                 reset_room(room_number)
                                 state = IN_GAME_HALL
                                 break
                     else:
                         client_socket.send(b"4002 Unrecognized message")
+                if threading.get_ident() in rooms[room_number]:
+                    lock.acquire()
+                    rooms[room_number].remove(threading.get_ident())
+                    reset_room(room_number)
+                    lock.release()
                     
 
             #game logics
