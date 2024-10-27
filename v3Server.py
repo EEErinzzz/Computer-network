@@ -149,7 +149,7 @@ def handle_client(client_socket, user_info):
                     client_socket.send(b"3011 Wait")
                     while True:
                         time.sleep(1)
-                        print(len(rooms[room_number]))
+                        #print(len(rooms[room_number]))
                         client_socket.send(b"5001 SYN") #Send 5001 SYN msg to the client to check if the client is still online
                         
                         #Client should return SYN ACK msg
@@ -254,7 +254,7 @@ def handle_client(client_socket, user_info):
                                     break
                                 #Lose
                                 else:
-                                    print("???", client_guess, rooms_guess_answer[room_number])
+                                    #print("???", client_guess, rooms_guess_answer[room_number])
                                     client_socket.send(b"3022 You lost this game")
                                     if len(rooms[room_number]) == 1:
                                         reset_room(room_number)
@@ -301,6 +301,7 @@ def handle_client(client_socket, user_info):
                                 if len(rooms[room_number]) == 0:
                                     reset_room(room_number)
                                 lock.release()
+                                return
                             ## More exception if needed
 
                             # When the other player left
