@@ -70,6 +70,9 @@ def load_user_info(USER_INFO_PATH):
 def handle_client(client_socket, user_info): 
     #client_socket: sockect connecting to the specific client from the server
     # user_info: ictionary recording name and key of users
+    client_socket.settimeout(10) # Default timeeout is 10 seconds
+
+
     state = AUTHENTICATING
     room_number = 0
     while True:
@@ -132,6 +135,7 @@ def handle_client(client_socket, user_info):
                 
 
             if state == IN_GAME:
+                client_socket.settimeout(30) # Extend the timeout to 30 seconds after user login
                 # check whether user in the room is disconnected
                 # After the player receiving the "3012" msg
                 lock.acquire()
@@ -239,7 +243,7 @@ def handle_client(client_socket, user_info):
                                 else:
                                     print("???", client_guess, rooms_guess_answer[room_number])
                                     client_socket.send(b"3022 You lost this game")
-                                    if rooms[room_number] == 1:
+                                    if len(rooms[room_number]) == 1:
                                         reset_room(room_number)
                                     state = IN_GAME_HALL
                                     break
